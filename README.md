@@ -9,6 +9,12 @@
 - 路线规划与行动反推
 - 正式回复报告生成
 
+并支持模型路由策略：
+
+- `GLM 全阶段模式（推荐）`
+- `单模型模式`
+- `混合分流模式（实验）`
+
 ## 功能概览
 
 - 个案录入与管理
@@ -16,6 +22,7 @@
 - 矛盾追问生成
 - 路线规划
 - 终版回复报告
+- 模型切换与路由策略
 - 本地 `SQLite` 持久化
 - `SiliconFlow` OpenAI 兼容接口接入
 - 飞书多维表格字段映射预留
@@ -107,6 +114,14 @@ SILICONFLOW_TIMEOUT = "60"
 - `docs/DATA_MODEL_AND_FEISHU_MAPPING.md`
 - `docs/FEISHU_SYNC_NEXT_STEPS.md`
 - `docs/IMPLEMENTATION_ROADMAP.md`
+
+## 示例测试案例
+
+- `examples/README.md`
+- `examples/case_01_ruc_han_language.txt`
+- `examples/case_02_music_major_transition.txt`
+- `examples/case_03_b2b_content_operator.txt`
+- `examples/case_04_ruc_labor_econ_gap.txt`
 
 ## 项目结构
 

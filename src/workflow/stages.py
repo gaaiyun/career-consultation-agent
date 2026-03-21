@@ -8,30 +8,40 @@ class StageDefinition:
     name: str
     prompt_name: str
     temperature: float
+    max_tokens: int
+    expects_json: bool = True
 
 
 STRUCTURED_ANALYSIS = StageDefinition(
     name="structured_analysis",
     prompt_name="structured_analysis",
     temperature=0.2,
+    max_tokens=1800,
+    expects_json=True,
 )
 
 QUESTIONING = StageDefinition(
     name="questioning",
     prompt_name="question_generation",
     temperature=0.3,
+    max_tokens=1400,
+    expects_json=True,
 )
 
 ROUTE_PLANNING = StageDefinition(
     name="route_planning",
     prompt_name="route_planning",
     temperature=0.4,
+    max_tokens=2200,
+    expects_json=True,
 )
 
 FINAL_REPORT = StageDefinition(
     name="final_report",
     prompt_name="final_report",
     temperature=0.5,
+    max_tokens=1800,
+    expects_json=False,
 )
 
 STAGE_ORDER = [

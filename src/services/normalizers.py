@@ -102,6 +102,9 @@ def _normalize_route_planning(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 def _normalize_final_report(payload: dict[str, Any]) -> dict[str, Any]:
+    if "report_markdown" in payload:
+        payload.setdefault("report_markdown", "")
+        return payload
     payload.setdefault("title", "职业咨询回复报告")
     payload.setdefault("opening", "")
     payload.setdefault("summary_of_case", "")

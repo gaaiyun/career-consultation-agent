@@ -6,6 +6,7 @@ from typing import Any
 
 from src.config.settings import Settings
 from src.domain.models import ExportRecord, PromptRun, StageResult
+from src.llm.model_router import ROUTING_SINGLE, resolve_model_for_stage
 from src.llm.siliconflow_client import SiliconFlowClient
 from src.prompts.registry import PromptRegistry
 from src.services.formatters import to_markdown_report
@@ -29,6 +30,8 @@ SYSTEM_PROMPT = (
 class ConsultationWorkflowService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
+        self.active_model = settings.siliconflow_model
+        self.routing_key = ROUTING_SINGLE
         self.case_repo = CaseRepository(settings)
         self.stage_repo = StageResultRepository(settings)
         self.prompt_repo = PromptRunRepository(settings)
@@ -36,12 +39,18 @@ class ConsultationWorkflowService:
         self.prompt_registry = PromptRegistry(settings)
         self.llm_client = SiliconFlowClient(settings)
 
-    def run_structured_analysis(self, case_id: str) -> dict[str, Any]:
+    def set_active_model(self, model_name: str) -> None:
+        self.active_model = model_name
+
+    def set_routing_key(self, routing_key: str) -> None:
+        self.routing_key = routing_key
+
+    def run_structured_analysis(self, case_id: str, model_name: str | None = None) -> dict[str, Any]:
         case = self._must_get_case(case_id)
         variables = {"source_text": case.source_text}
-        return self._run_stage(STRUCTURED_ANALYSIS, case_id, variables)
+        return self._run_stage(STRUCTURED_ANALYSIS, case_id, variables, model_name=model_name)
 
-    def run_question_generation(self, case_id: str) -> dict[str, Any]:
+    def run_question_generation(self, case_id: str, model_name: str | None = None) -> dict[str, Any]:
         case = self._must_get_case(case_id)
         structured_analysis = self._latest_output(case_id, STRUCTURED_ANALYSIS.name)
         if not structured_analysis:
@@ -50,13 +59,13 @@ class ConsultationWorkflowService:
             "source_text": case.source_text,
             "structured_analysis_json": json.dumps(structured_analysis, ensure_ascii=False, indent=2),
         }
-        return self._run_stage(QUESTIONING, case_id, variables)
+        return self._run_stage(QUESTIONING, case_id, variables, model_name=model_name)
 
     def save_question_answers(self, case_id: str, payload: dict[str, Any]) -> dict[str, Any]:
         self.save_manual_stage_output(case_id, QUESTIONING.name, payload)
         return payload
 
-    def run_route_planning(self, case_id: str) -> dict[str, Any]:
+    def run_route_planning(self, case_id: str, model_name: str | None = None) -> dict[str, Any]:
         case = self._must_get_case(case_id)
         structured_analysis = self._latest_output(case_id, STRUCTURED_ANALYSIS.name)
         questions = self._latest_output(case_id, QUESTIONING.name)
@@ -67,9 +76,9 @@ class ConsultationWorkflowService:
             "structured_analysis_json": json.dumps(structured_analysis, ensure_ascii=False, indent=2),
             "follow_up_questions_json": json.dumps(questions or {"questions": []}, ensure_ascii=False, indent=2),
         }
-        return self._run_stage(ROUTE_PLANNING, case_id, variables)
+        return self._run_stage(ROUTE_PLANNING, case_id, variables, model_name=model_name)
 
-    def run_final_report(self, case_id: str) -> dict[str, Any]:
+    def run_final_report(self, case_id: str, model_name: str | None = None) -> dict[str, Any]:
         case = self._must_get_case(case_id)
         structured_analysis = self._latest_output(case_id, STRUCTURED_ANALYSIS.name)
         route_plan = self._latest_output(case_id, ROUTE_PLANNING.name)
@@ -80,7 +89,7 @@ class ConsultationWorkflowService:
             "structured_analysis_json": json.dumps(structured_analysis, ensure_ascii=False, indent=2),
             "route_plan_json": json.dumps(route_plan, ensure_ascii=False, indent=2),
         }
-        return self._run_stage(FINAL_REPORT, case_id, variables)
+        return self._run_stage(FINAL_REPORT, case_id, variables, model_name=model_name)
 
     def export_report_markdown(self, case_id: str) -> str:
         final_report = self._latest_output(case_id, FINAL_REPORT.name)
@@ -118,19 +127,43 @@ class ConsultationWorkflowService:
         self.case_repo.update_stage(case_id, stage_name)
         return payload
 
-    def _run_stage(self, stage, case_id: str, variables: dict[str, str]) -> dict[str, Any]:
+    def _run_stage(
+        self,
+        stage,
+        case_id: str,
+        variables: dict[str, str],
+        *,
+        model_name: str | None = None,
+    ) -> dict[str, Any]:
         prompt = self.prompt_registry.render_prompt(stage.prompt_name, variables)
         start_time = time.perf_counter()
         raw_response = ""
         success = False
+        used_model = model_name or resolve_model_for_stage(
+            stage.name,
+            routing_key=self.routing_key,
+            fallback_model=self.active_model or self.settings.siliconflow_model,
+        )
         try:
-            output = self.llm_client.generate_json(
-                SYSTEM_PROMPT,
-                prompt,
-                model=self.settings.siliconflow_model,
-                temperature=stage.temperature,
-            )
-            raw_response = json.dumps(output, ensure_ascii=False)
+            if stage.expects_json:
+                output = self.llm_client.generate_json(
+                    SYSTEM_PROMPT,
+                    prompt,
+                    model=used_model,
+                    temperature=stage.temperature,
+                    max_tokens=stage.max_tokens,
+                )
+                raw_response = json.dumps(output, ensure_ascii=False)
+            else:
+                report_markdown = self.llm_client.generate(
+                    SYSTEM_PROMPT,
+                    prompt,
+                    model=used_model,
+                    temperature=stage.temperature,
+                    max_tokens=stage.max_tokens,
+                )
+                output = {"report_markdown": report_markdown}
+                raw_response = report_markdown
             success = True
         except Exception as exc:
             raw_response = str(exc)
@@ -142,7 +175,7 @@ class ConsultationWorkflowService:
                     case_id=case_id,
                     stage_name=stage.name,
                     prompt_name=stage.prompt_name,
-                    model=self.settings.siliconflow_model,
+                    model=used_model,
                     temperature=stage.temperature,
                     input_summary=self._build_input_summary(variables),
                     raw_response=raw_response,

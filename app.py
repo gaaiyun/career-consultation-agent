@@ -3,6 +3,7 @@ from __future__ import annotations
 import streamlit as st
 
 from src.config.settings import get_settings
+from src.llm.model_router import ROUTING_GLM_ONLY, ROUTING_PROFILES, ROUTING_SINGLE
 from src.storage.db import init_db
 from src.storage.repositories import CaseRepository
 from src.ui.pages.case_intake import render_case_intake
@@ -33,9 +34,41 @@ def main() -> None:
 
     if "selected_case_id" not in st.session_state:
         st.session_state.selected_case_id = None
+    if "active_model" not in st.session_state:
+        st.session_state.active_model = settings.siliconflow_model
+    if "routing_key" not in st.session_state:
+        st.session_state.routing_key = ROUTING_GLM_ONLY
 
     with st.sidebar:
         st.header("案例列表")
+        routing_key = st.selectbox(
+            "模型路由策略",
+            options=list(ROUTING_PROFILES.keys()),
+            format_func=lambda value: ROUTING_PROFILES[value].label,
+            index=list(ROUTING_PROFILES.keys()).index(st.session_state.routing_key)
+            if st.session_state.routing_key in ROUTING_PROFILES
+            else 0,
+        )
+        st.session_state.routing_key = routing_key
+        workflow_service.set_routing_key(routing_key)
+        st.caption(ROUTING_PROFILES[routing_key].description)
+
+        active_model = st.selectbox(
+            "手动模型",
+            options=list(settings.supported_models),
+            index=list(settings.supported_models).index(st.session_state.active_model)
+            if st.session_state.active_model in settings.supported_models
+            else 0,
+            disabled=routing_key != ROUTING_SINGLE,
+        )
+        st.session_state.active_model = active_model
+        workflow_service.set_active_model(active_model)
+
+        if routing_key != ROUTING_SINGLE:
+            with st.expander("查看阶段模型映射"):
+                for stage_name, model_name in ROUTING_PROFILES[routing_key].stage_models.items():
+                    st.write(f"`{stage_name}` -> `{model_name}`")
+
         cases = case_repo.list_cases()
         options = ["__new__"] + [case.case_id for case in cases]
         labels = {"__new__": "新建案例"}
@@ -61,7 +94,9 @@ def main() -> None:
         st.session_state.selected_case_id = None
         return
 
-    st.info(f"当前案例：`{case.client_alias}` | 当前阶段：`{case.current_stage}`")
+    st.info(
+        f"当前案例：`{case.client_alias}` | 当前阶段：`{case.current_stage}` | 路由策略：`{ROUTING_PROFILES[st.session_state.routing_key].label}` | 手动模型：`{st.session_state.active_model}`"
+    )
 
     tab1, tab2, tab3, tab4, tab5 = st.tabs(
         ["1. 结构化拆解", "2. 矛盾追问", "3. 路线规划", "4. 终版报告", "5. 历史版本"]

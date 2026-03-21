@@ -38,11 +38,13 @@ class SiliconFlowClient(BaseLLMClient):
         model: str | None = None,
         temperature: float = 0.2,
         timeout: int | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         completion = self.client.chat.completions.create(
             model=model or self.settings.siliconflow_model,
             temperature=temperature,
             timeout=timeout or self.settings.default_timeout,
+            max_tokens=max_tokens,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
@@ -58,18 +60,37 @@ class SiliconFlowClient(BaseLLMClient):
         model: str | None = None,
         temperature: float = 0.2,
         timeout: int | None = None,
+        max_tokens: int | None = None,
     ) -> dict[str, Any]:
-        raw_text = self.generate(
-            system_prompt,
-            user_prompt,
-            model=model,
-            temperature=temperature,
-            timeout=timeout,
-        )
+        active_model = model or self.settings.siliconflow_model
+        use_native_json_mode = "deepseek-ai/DeepSeek-V3.2" not in active_model
+
+        if use_native_json_mode:
+            completion = self.client.chat.completions.create(
+                model=active_model,
+                temperature=temperature,
+                timeout=timeout or self.settings.default_timeout,
+                max_tokens=max_tokens,
+                response_format={"type": "json_object"},
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_prompt},
+                ],
+            )
+            raw_text = completion.choices[0].message.content or ""
+        else:
+            raw_text = self.generate(
+                system_prompt,
+                f"{user_prompt}\n\n再次强调：只输出一个合法 JSON 对象，不要输出解释、前后缀或 markdown 代码块。",
+                model=active_model,
+                temperature=temperature,
+                timeout=timeout,
+                max_tokens=max_tokens,
+            )
         return self._extract_json(raw_text)
 
     def _extract_json(self, text: str) -> dict[str, Any]:
-        text = text.strip()
+        text = text.strip().replace("\ufeff", "")
         try:
             parsed = json.loads(text)
             if isinstance(parsed, dict):
@@ -83,6 +104,44 @@ class SiliconFlowClient(BaseLLMClient):
 
         object_match = re.search(r"(\{.*\})", text, re.S)
         if object_match:
-            return json.loads(object_match.group(1))
+            candidate = self._repair_json_candidate(object_match.group(1))
+            return json.loads(candidate)
 
         raise ValueError("Model response is not valid JSON.")
+
+    def _repair_json_candidate(self, candidate: str) -> str:
+        candidate = candidate.strip()
+        candidate = re.sub(r",(\s*[}\]])", r"\1", candidate)
+        return self._extract_balanced_json(candidate)
+
+    def _extract_balanced_json(self, text: str) -> str:
+        start = text.find("{")
+        if start == -1:
+            return text
+
+        depth = 0
+        in_string = False
+        escaped = False
+        end = None
+        for idx in range(start, len(text)):
+            char = text[idx]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif char == "\\":
+                    escaped = True
+                elif char == '"':
+                    in_string = False
+                continue
+
+            if char == '"':
+                in_string = True
+            elif char == "{":
+                depth += 1
+            elif char == "}":
+                depth -= 1
+                if depth == 0:
+                    end = idx + 1
+                    break
+
+        return text[start:end] if end else text

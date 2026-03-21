@@ -14,6 +14,7 @@ class BaseLLMClient(ABC):
         model: str | None = None,
         temperature: float = 0.2,
         timeout: int | None = None,
+        max_tokens: int | None = None,
     ) -> str:
         raise NotImplementedError
 
@@ -26,5 +27,6 @@ class BaseLLMClient(ABC):
         model: str | None = None,
         temperature: float = 0.2,
         timeout: int | None = None,
+        max_tokens: int | None = None,
     ) -> dict[str, Any]:
         raise NotImplementedError

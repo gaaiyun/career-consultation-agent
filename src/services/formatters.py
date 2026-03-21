@@ -9,6 +9,9 @@ def to_pretty_json(payload: dict[str, Any]) -> str:
 
 
 def to_markdown_report(report_payload: dict[str, Any]) -> str:
+    if "report_markdown" in report_payload:
+        return report_payload.get("report_markdown", "")
+
     title = report_payload.get("title", "职业咨询回复报告")
     opening = report_payload.get("opening", "")
     summary_of_case = report_payload.get("summary_of_case", "")

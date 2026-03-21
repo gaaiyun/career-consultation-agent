@@ -16,7 +16,10 @@ def render_structured_analysis(case, workflow_service) -> None:
     with col2:
         latest = workflow_service.get_latest_stage_output(case.case_id, "structured_analysis")
         if st.button("生成结构化拆解", use_container_width=True):
-            latest = workflow_service.run_structured_analysis(case.case_id)
+            latest = workflow_service.run_structured_analysis(
+                case.case_id,
+                model_name=st.session_state.get("active_model"),
+            )
             st.success("已生成结构化拆解。")
         if latest:
             edited = st.text_area(

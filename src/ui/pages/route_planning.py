@@ -11,7 +11,10 @@ def render_route_planning(case, workflow_service) -> None:
     st.header("路线规划")
     latest = workflow_service.get_latest_stage_output(case.case_id, "route_planning")
     if st.button("生成路线规划", use_container_width=True):
-        latest = workflow_service.run_route_planning(case.case_id)
+        latest = workflow_service.run_route_planning(
+            case.case_id,
+            model_name=st.session_state.get("active_model"),
+        )
         st.success("已生成路线规划。")
 
     if not latest:
