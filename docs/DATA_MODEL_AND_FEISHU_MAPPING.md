@@ -80,24 +80,49 @@
 
 ```json
 {
-  "summary": "string",
-  "tags": ["string"],
-  "profile": {
-    "education": ["string"],
-    "experience": ["string"],
-    "current_status": "string"
+  "core_profile": {
+    "one_sentence_summary": "string",
+    "tags": ["string"]
   },
-  "motivation": {
-    "interests": ["string"],
-    "strengths": ["string"],
-    "values": ["string"]
+  "gps_analysis": {
+    "positioning_system": {
+      "static_coordinates": {
+        "education_background": ["string"],
+        "professional_assets": ["string"],
+        "current_status": "string"
+      },
+      "dynamic_path": {
+        "work_timeline": ["string"],
+        "achievement_events": ["string"],
+        "transition_logic": ["string"]
+      }
+    },
+    "motivation_system": {
+      "interest_circle": ["string"],
+      "ability_circle": ["string"],
+      "value_circle": ["string"],
+      "anchor_summary": "string"
+    },
+    "constraint_system": {
+      "external_reality": ["string"],
+      "internal_obstacles": ["string"]
+    }
   },
-  "constraints": {
-    "external": ["string"],
-    "internal": ["string"]
-  },
-  "insights": ["string"],
-  "open_questions": ["string"]
+  "contradictions": [
+    {
+      "label": "string",
+      "description": "string",
+      "why_it_matters": "string"
+    }
+  ],
+  "preliminary_insights": ["string"],
+  "possible_directions": ["string"],
+  "clarification_questions": ["string"],
+  "consultant_notes": {
+    "confidence_level": "high|medium|low",
+    "missing_information": ["string"],
+    "bias_risks": ["string"]
+  }
 }
 ```
 
@@ -105,14 +130,27 @@
 
 ```json
 {
+  "question_strategy": {
+    "goal": "string",
+    "priority_rule": "string"
+  },
   "questions": [
     {
       "question_text": "string",
       "reason": "string",
+      "linked_contradiction": "string",
       "priority": "high|medium|low",
+      "expected_signal": "string",
       "answer": "string"
     }
-  ]
+  ],
+  "logic_checks": [
+    {
+      "assumption": "string",
+      "risk": "string"
+    }
+  ],
+  "consultant_prompting_notes": ["string"]
 }
 ```
 
@@ -120,18 +158,37 @@
 
 ```json
 {
-  "recommended_route": "string",
+  "planning_summary": {
+    "decision_frame": "string",
+    "core_tradeoff": "string"
+  },
   "route_options": [
     {
       "route_name": "string",
+      "route_positioning": "string",
       "fit_score": 0,
+      "fit_reasons": ["string"],
       "advantages": ["string"],
       "risks": ["string"],
-      "prep_actions": ["string"]
+      "required_conditions": ["string"],
+      "prep_actions": ["string"],
+      "time_horizon": "string"
     }
   ],
-  "decision_logic": ["string"],
-  "next_steps": ["string"]
+  "recommended_route": {
+    "route_name": "string",
+    "why_recommended": ["string"],
+    "why_not_others": ["string"],
+    "reverse_action_plan": {
+      "now": ["string"],
+      "next_1_to_3_months": ["string"],
+      "next_3_to_12_months": ["string"]
+    }
+  },
+  "consultant_conclusion": {
+    "bottom_line_advice": "string",
+    "watch_points": ["string"]
+  }
 }
 ```
 
@@ -141,10 +198,25 @@
 {
   "title": "string",
   "opening": "string",
-  "core_findings": ["string"],
-  "recommended_route": "string",
-  "action_plan": ["string"],
+  "summary_of_case": "string",
+  "core_findings": [
+    {
+      "theme": "string",
+      "detail": "string"
+    }
+  ],
+  "route_recommendation": {
+    "recommended_route": "string",
+    "recommendation_detail": "string",
+    "alternative_routes": ["string"]
+  },
+  "action_plan": {
+    "immediate_actions": ["string"],
+    "near_term_actions": ["string"],
+    "mid_term_actions": ["string"]
+  },
   "risk_reminders": ["string"],
+  "questions_for_next_round": ["string"],
   "closing": "string"
 }
 ```
