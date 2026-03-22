@@ -5,6 +5,7 @@ import re
 import time
 from typing import Any
 
+from json_repair import repair_json
 from openai import APIConnectionError, APITimeoutError, OpenAI, RateLimitError
 
 from src.config.settings import Settings
@@ -82,14 +83,23 @@ class SiliconFlowClient(BaseLLMClient):
             try:
                 return self._extract_json(raw_text)
             except Exception:
-                raw_text = self.generate(
-                    system_prompt,
-                    f"{user_prompt}\n\n上一轮输出不是合法 JSON。请重新输出且只输出一个合法 JSON 对象，不要输出解释、前后缀或 markdown 代码块。",
-                    model=active_model,
-                    temperature=temperature,
-                    timeout=timeout,
-                    max_tokens=max_tokens,
-                )
+                try:
+                    repaired_text = self._repair_json_with_model(
+                        raw_text,
+                        model=active_model,
+                        timeout=timeout,
+                        max_tokens=max_tokens,
+                    )
+                    return self._extract_json(repaired_text)
+                except Exception:
+                    raw_text = self.generate(
+                        system_prompt,
+                        f"{user_prompt}\n\n上一轮输出不是合法 JSON。请重新输出且只输出一个合法 JSON 对象，不要输出解释、前后缀或 markdown 代码块。",
+                        model=active_model,
+                        temperature=temperature,
+                        timeout=timeout,
+                        max_tokens=max_tokens,
+                    )
         else:
             raw_text = self.generate(
                 system_prompt,
@@ -99,7 +109,16 @@ class SiliconFlowClient(BaseLLMClient):
                 timeout=timeout,
                 max_tokens=max_tokens,
             )
-        return self._extract_json(raw_text)
+        try:
+            return self._extract_json(raw_text)
+        except Exception:
+            repaired_text = self._repair_json_with_model(
+                raw_text,
+                model=active_model,
+                timeout=timeout,
+                max_tokens=max_tokens,
+            )
+            return self._extract_json(repaired_text)
 
     def _extract_json(self, text: str) -> dict[str, Any]:
         text = self._sanitize_json_text(text)
@@ -117,7 +136,21 @@ class SiliconFlowClient(BaseLLMClient):
         object_match = re.search(r"(\{.*\})", text, re.S)
         if object_match:
             candidate = self._repair_json_candidate(object_match.group(1))
-            return json.loads(candidate)
+            try:
+                return json.loads(candidate)
+            except json.JSONDecodeError:
+                repaired = repair_json(candidate)
+                parsed = json.loads(repaired)
+                if isinstance(parsed, dict):
+                    return parsed
+
+        try:
+            repaired = repair_json(text)
+            parsed = json.loads(repaired)
+            if isinstance(parsed, dict):
+                return parsed
+        except Exception:
+            pass
 
         raise ValueError("Model response is not valid JSON.")
 
@@ -144,6 +177,25 @@ class SiliconFlowClient(BaseLLMClient):
         if last_error:
             raise last_error
         raise RuntimeError("Unexpected completion failure.")
+
+    def _repair_json_with_model(
+        self,
+        raw_text: str,
+        *,
+        model: str,
+        timeout: int | None = None,
+        max_tokens: int | None = None,
+    ) -> str:
+        return self.generate(
+            "你是一个 JSON 修复助手。你的唯一任务是把用户给出的内容整理成一个合法 JSON 对象。"
+            "不要补充解释，不要改变字段含义，不要输出 markdown 代码块，只输出 JSON。",
+            "请把下面内容修复成一个合法 JSON 对象；如果原文里有明显缺失的标点、引号或逗号，请在不改变原意的前提下补齐：\n\n"
+            f"{raw_text}",
+            model=model,
+            temperature=0,
+            timeout=timeout,
+            max_tokens=max_tokens,
+        )
 
     def _extract_balanced_json(self, text: str) -> str:
         start = text.find("{")

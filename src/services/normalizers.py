@@ -98,6 +98,24 @@ def _normalize_route_planning(payload: dict[str, Any]) -> dict[str, Any]:
     payload.setdefault("consultant_conclusion", {})
     payload["consultant_conclusion"].setdefault("bottom_line_advice", "")
     payload["consultant_conclusion"].setdefault("watch_points", [])
+
+    if payload["route_options"] and not payload["recommended_route"].get("route_name"):
+        best_route = max(payload["route_options"], key=lambda route: route.get("fit_score", 0))
+        payload["recommended_route"]["route_name"] = best_route.get("route_name", "")
+        payload["recommended_route"]["why_recommended"] = best_route.get("fit_reasons", [])[:3]
+        payload["recommended_route"]["why_not_others"] = [
+            f"备选路线 {route.get('route_name', '')} 的综合适配度更低或风险更高。"
+            for route in payload["route_options"]
+            if route.get("route_name") and route.get("route_name") != best_route.get("route_name")
+        ][:2]
+        payload["recommended_route"]["reverse_action_plan"]["now"] = best_route.get("prep_actions", [])[:3]
+        payload["recommended_route"]["reverse_action_plan"]["next_1_to_3_months"] = best_route.get("prep_actions", [])[3:6]
+
+    if not payload["consultant_conclusion"].get("bottom_line_advice") and payload["recommended_route"].get("route_name"):
+        payload["consultant_conclusion"]["bottom_line_advice"] = (
+            f"优先把 {payload['recommended_route']['route_name']} 作为当前主线，先完成入场，再逐步做岗位升级。"
+        )
+
     return payload
 
 

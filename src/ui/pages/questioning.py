@@ -11,8 +11,11 @@ def render_questioning(case, workflow_service) -> None:
     st.header("矛盾追问工作台")
     latest = workflow_service.get_latest_stage_output(case.case_id, "questioning")
     if st.button("生成追问问题集", use_container_width=True):
-        latest = workflow_service.run_question_generation(case.case_id)
-        st.success("已生成追问问题集。")
+        try:
+            latest = workflow_service.run_question_generation(case.case_id)
+            st.success("已生成追问问题集。")
+        except Exception as exc:
+            st.error(f"追问问题集生成失败，请重试。错误信息：{exc}")
 
     if not latest:
         st.info("请先生成追问问题集。")

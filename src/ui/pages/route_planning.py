@@ -11,8 +11,11 @@ def render_route_planning(case, workflow_service) -> None:
     st.header("路线规划")
     latest = workflow_service.get_latest_stage_output(case.case_id, "route_planning")
     if st.button("生成路线规划", use_container_width=True):
-        latest = workflow_service.run_route_planning(case.case_id)
-        st.success("已生成路线规划。")
+        try:
+            latest = workflow_service.run_route_planning(case.case_id)
+            st.success("已生成路线规划。")
+        except Exception as exc:
+            st.error(f"路线规划生成失败，请重试。错误信息：{exc}")
 
     if not latest:
         st.info("请先完成前序阶段。")

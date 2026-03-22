@@ -16,8 +16,11 @@ def render_structured_analysis(case, workflow_service) -> None:
     with col2:
         latest = workflow_service.get_latest_stage_output(case.case_id, "structured_analysis")
         if st.button("生成结构化拆解", use_container_width=True):
-            latest = workflow_service.run_structured_analysis(case.case_id)
-            st.success("已生成结构化拆解。")
+            try:
+                latest = workflow_service.run_structured_analysis(case.case_id)
+                st.success("已生成结构化拆解。")
+            except Exception as exc:
+                st.error(f"结构化拆解生成失败，请重试。错误信息：{exc}")
         if latest:
             edited = st.text_area(
                 "结构化结果 JSON",

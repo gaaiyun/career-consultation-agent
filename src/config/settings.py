@@ -30,7 +30,7 @@ class Settings:
     siliconflow_api_key: str = _get_config_value("SILICONFLOW_API_KEY", "")
     siliconflow_base_url: str = _get_config_value("SILICONFLOW_BASE_URL", "https://api.siliconflow.cn/v1")
     siliconflow_model: str = _get_config_value("SILICONFLOW_MODEL", "deepseek-ai/DeepSeek-V3.2")
-    default_timeout: int = int(_get_config_value("SILICONFLOW_TIMEOUT", "60"))
+    default_timeout: int = int(_get_config_value("SILICONFLOW_TIMEOUT", "90"))
     supported_models: tuple[str, ...] = (
         "deepseek-ai/DeepSeek-V3.2",
         "zai-org/GLM-4.6",

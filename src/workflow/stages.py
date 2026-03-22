@@ -16,7 +16,7 @@ STRUCTURED_ANALYSIS = StageDefinition(
     name="structured_analysis",
     prompt_name="structured_analysis",
     temperature=0.2,
-    max_tokens=1800,
+    max_tokens=1600,
     expects_json=True,
 )
 
@@ -24,23 +24,23 @@ QUESTIONING = StageDefinition(
     name="questioning",
     prompt_name="question_generation",
     temperature=0.3,
-    max_tokens=1400,
+    max_tokens=1100,
     expects_json=True,
 )
 
 ROUTE_PLANNING = StageDefinition(
     name="route_planning",
     prompt_name="route_planning",
-    temperature=0.4,
-    max_tokens=2200,
+    temperature=0.3,
+    max_tokens=1600,
     expects_json=True,
 )
 
 FINAL_REPORT = StageDefinition(
     name="final_report",
     prompt_name="final_report",
-    temperature=0.5,
-    max_tokens=1800,
+    temperature=0.4,
+    max_tokens=1500,
     expects_json=False,
 )
 
