@@ -139,11 +139,14 @@ class ConsultationWorkflowService:
         start_time = time.perf_counter()
         raw_response = ""
         success = False
-        used_model = model_name or resolve_model_for_stage(
-            stage.name,
-            routing_key=self.routing_key,
-            fallback_model=self.active_model or self.settings.siliconflow_model,
-        )
+        if self.routing_key == ROUTING_SINGLE and model_name:
+            used_model = model_name
+        else:
+            used_model = resolve_model_for_stage(
+                stage.name,
+                routing_key=self.routing_key,
+                fallback_model=self.active_model or self.settings.siliconflow_model,
+            )
         try:
             if stage.expects_json:
                 output = self.llm_client.generate_json(

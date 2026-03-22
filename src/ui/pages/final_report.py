@@ -14,10 +14,7 @@ def render_final_report(case, workflow_service) -> None:
     col1, col2 = st.columns(2)
     with col1:
         if st.button("生成终版报告", use_container_width=True):
-            latest = workflow_service.run_final_report(
-                case.case_id,
-                model_name=st.session_state.get("active_model"),
-            )
+            latest = workflow_service.run_final_report(case.case_id)
             st.success("已生成终版报告。")
             markdown = to_markdown_report(latest)
     with col2:

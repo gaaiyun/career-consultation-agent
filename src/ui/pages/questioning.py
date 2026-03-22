@@ -11,10 +11,7 @@ def render_questioning(case, workflow_service) -> None:
     st.header("矛盾追问工作台")
     latest = workflow_service.get_latest_stage_output(case.case_id, "questioning")
     if st.button("生成追问问题集", use_container_width=True):
-        latest = workflow_service.run_question_generation(
-            case.case_id,
-            model_name=st.session_state.get("active_model"),
-        )
+        latest = workflow_service.run_question_generation(case.case_id)
         st.success("已生成追问问题集。")
 
     if not latest:
