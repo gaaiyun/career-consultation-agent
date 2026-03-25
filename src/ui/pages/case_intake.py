@@ -6,12 +6,24 @@ from src.domain.models import Case, new_case_id
 
 
 def render_case_intake(case_repo) -> str | None:
-    st.header("案例录入")
+    st.markdown("## 新建案例")
+    st.caption("输入来访者原始信息，创建一个新的咨询案例。")
+
     with st.form("new_case_form"):
-        client_alias = st.text_input("来访者代称", placeholder="例如：人大大四同学A")
-        tags_text = st.text_input("标签", placeholder="用逗号分隔，例如：转行,考研,求稳")
-        source_text = st.text_area("原始文本", height=220)
-        submitted = st.form_submit_button("创建案例")
+        client_alias = st.text_input(
+            "来访者代称",
+            placeholder="例如：26届专升本同学A",
+        )
+        tags_text = st.text_input(
+            "标签（逗号分隔，可选）",
+            placeholder="例如：转行, 应届, 双非",
+        )
+        source_text = st.text_area(
+            "原始文本",
+            height=260,
+            placeholder="粘贴来访者发来的原始咨询文字……",
+        )
+        submitted = st.form_submit_button("创建案例", type="primary", use_container_width=True)
 
     if submitted:
         if not client_alias.strip() or not source_text.strip():
