@@ -12,6 +12,7 @@ from src.ui.pages.questioning import render_questioning
 from src.ui.pages.route_planning import render_route_planning
 from src.ui.pages.structured_analysis import render_structured_analysis
 from src.workflow.orchestrator import ConsultationWorkflowService
+from src.workflow.stages import FINAL_REPORT, QUESTIONING, ROUTE_PLANNING, STRUCTURED_ANALYSIS
 
 
 settings = get_settings()
@@ -19,9 +20,68 @@ init_db(settings)
 case_repo = CaseRepository(settings)
 workflow_service = ConsultationWorkflowService(settings)
 
+_STAGE_LABELS = {
+    STRUCTURED_ANALYSIS.name: "结构化拆解",
+    QUESTIONING.name: "矛盾追问",
+    ROUTE_PLANNING.name: "路线规划",
+    FINAL_REPORT.name: "终版报告",
+}
+_ALL_STAGES = list(_STAGE_LABELS.keys())
+
 
 def _case_label(case) -> str:
     return f"{case.client_alias} | {case.current_stage} | {case.case_id}"
+
+
+def _render_progress_and_run_all(case) -> None:
+    """Show workflow progress bar and one-click run-all button."""
+    completed = workflow_service.completed_stages(case.case_id)
+    n_done = len(completed)
+    n_total = len(_ALL_STAGES)
+
+    # Progress bar
+    st.progress(
+        n_done / n_total,
+        text=f"工作流进度：{n_done}/{n_total} 步已完成  |  "
+        + "  →  ".join(
+            f"✅ {_STAGE_LABELS[s]}" if s in completed else f"⬜ {_STAGE_LABELS[s]}"
+            for s in _ALL_STAGES
+        ),
+    )
+
+    if n_done < n_total:
+        if st.button(
+            "⚡ 一键跑完后续步骤",
+            key="run_all_pipeline",
+            type="primary",
+            help="从当前进度开始，依次自动跑完剩余所有步骤（不会覆盖已有结果）",
+        ):
+            with st.status("正在运行后续步骤…", expanded=True) as status:
+                try:
+                    def on_start(stage_name: str) -> None:
+                        st.write(f"🔄 正在运行：**{_STAGE_LABELS.get(stage_name, stage_name)}**")
+
+                    def on_done(stage_name: str) -> None:
+                        st.write(f"✅ 完成：**{_STAGE_LABELS.get(stage_name, stage_name)}**")
+
+                    executed = workflow_service.run_pipeline_remaining(
+                        case.case_id,
+                        on_stage_start=on_start,
+                        on_stage_done=on_done,
+                    )
+                    if executed:
+                        status.update(
+                            label=f"全部完成！共执行了 {len(executed)} 个步骤。",
+                            state="complete",
+                        )
+                    else:
+                        status.update(label="所有步骤已经完成，无需重新运行。", state="complete")
+                except Exception as exc:
+                    status.update(label=f"运行中断：{exc}", state="error")
+                    st.error(f"运行失败，请查看对应步骤的错误信息。\n\n{exc}")
+            st.rerun()
+    else:
+        st.success("所有步骤已完成！你可以在各个 Tab 中查看或修改结果，然后下载终版报告。")
 
 
 def main() -> None:
@@ -77,7 +137,9 @@ def main() -> None:
             "选择案例",
             options=options,
             format_func=lambda value: labels[value],
-            index=0 if st.session_state.selected_case_id not in options else options.index(st.session_state.selected_case_id),
+            index=0
+            if st.session_state.selected_case_id not in options
+            else options.index(st.session_state.selected_case_id),
         )
         st.session_state.selected_case_id = None if selected == "__new__" else selected
 
@@ -95,9 +157,22 @@ def main() -> None:
         return
 
     st.info(
-        f"当前案例：`{case.client_alias}` | 当前阶段：`{case.current_stage}` | 路由策略：`{ROUTING_PROFILES[st.session_state.routing_key].label}` | 手动模型：`{st.session_state.active_model}`"
+        f"当前案例：`{case.client_alias}` | "
+        f"当前阶段：`{case.current_stage}` | "
+        f"路由策略：`{ROUTING_PROFILES[st.session_state.routing_key].label}` | "
+        f"手动模型：`{st.session_state.active_model}`"
     )
 
+    # ------------------------------------------------------------------ #
+    # Progress bar + one-click run all
+    # ------------------------------------------------------------------ #
+    _render_progress_and_run_all(case)
+
+    st.divider()
+
+    # ------------------------------------------------------------------ #
+    # Stage tabs
+    # ------------------------------------------------------------------ #
     tab1, tab2, tab3, tab4, tab5 = st.tabs(
         ["1. 结构化拆解", "2. 矛盾追问", "3. 路线规划", "4. 终版报告", "5. 历史版本"]
     )
@@ -116,6 +191,9 @@ def main() -> None:
         if not versions:
             st.info("还没有历史版本。")
         for version in versions:
+            # Skip internal human notes entries in the history view
+            if version["stage_name"].endswith("_notes"):
+                continue
             with st.expander(
                 f"{version['stage_name']} | v{version['version_no']} | {version['created_at']}"
             ):

@@ -79,6 +79,7 @@ def _normalize_route_planning(payload: dict[str, Any]) -> dict[str, Any]:
     for route in payload["route_options"]:
         route.setdefault("route_name", "")
         route.setdefault("route_positioning", "")
+        route.setdefault("reachability", "open_market")
         route.setdefault("fit_score", 0)
         route.setdefault("fit_reasons", [])
         route.setdefault("advantages", [])
