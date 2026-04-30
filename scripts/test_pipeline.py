@@ -4,7 +4,7 @@ from __future__ import annotations
 import os
 import sys
 
-os.environ.setdefault("SILICONFLOW_API_KEY", "sk-qbywdfjgxkaxwxhcnbvnmhwiuguwgzrldrstlzsfivomsxub")
+os.environ.setdefault("SILICONFLOW_API_KEY", "")
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
