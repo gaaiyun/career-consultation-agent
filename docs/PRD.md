@@ -6,7 +6,7 @@
 - 产品定位：面向职业咨询师的咨询助手
 - 首版形态：`Streamlit` 单体 Web 应用
 - 首版用户：单咨询师
-- LLM 服务：`SiliconFlow`
+- LLM 服务：任意 OpenAI 兼容接口（硅基流动、DeepSeek 直连等）
 - 默认模型：`deepseek-ai/DeepSeek-V3.2`
 - 文档版本：`v1.0`
 

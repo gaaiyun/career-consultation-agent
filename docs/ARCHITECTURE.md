@@ -61,7 +61,7 @@ repo --> futureFeishu[Feishu Sync Adapter]
 职责：
 
 - 对外提供统一 `generate()` 和 `generate_json()`
-- 管理 `SiliconFlow` OpenAI 兼容调用细节
+- 管理 OpenAI 兼容调用细节（服务商通过配置切换，无关代码）
 - 处理超时、重试、JSON 解析
 
 设计原则：
@@ -161,7 +161,7 @@ class BaseLLMClient:
 
 实现：
 
-- `SiliconFlowClient`
+- `OpenAICompatibleClient`（旧名 `SiliconFlowClient` 保留为别名）
 
 关键能力：
 
@@ -241,7 +241,9 @@ src/
       mappers.py
   llm/
     base.py
-    siliconflow_client.py
+    client.py
+    model_router.py
+    siliconflow_client.py  # 兼容 shim，re-export client.py
   prompts/
     final_report.md
     question_generation.md
