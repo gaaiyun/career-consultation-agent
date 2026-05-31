@@ -6,8 +6,8 @@ from typing import Any, Callable
 
 from src.config.settings import Settings
 from src.domain.models import ExportRecord, PromptRun, StageResult
+from src.llm.client import OpenAICompatibleClient
 from src.llm.model_router import ROUTING_SINGLE, resolve_model_for_stage
-from src.llm.siliconflow_client import SiliconFlowClient
 from src.prompts.registry import PromptRegistry
 from src.services.formatters import to_markdown_report
 from src.services.normalizers import normalize_stage_output
@@ -33,14 +33,14 @@ _NOTES_SUFFIX = "_notes"
 class ConsultationWorkflowService:
     def __init__(self, settings: Settings) -> None:
         self.settings = settings
-        self.active_model = settings.siliconflow_model
+        self.active_model = settings.llm_model
         self.routing_key = ROUTING_SINGLE
         self.case_repo = CaseRepository(settings)
         self.stage_repo = StageResultRepository(settings)
         self.prompt_repo = PromptRunRepository(settings)
         self.export_repo = ExportRepository(settings)
         self.prompt_registry = PromptRegistry(settings)
-        self.llm_client = SiliconFlowClient(settings)
+        self.llm_client = OpenAICompatibleClient(settings)
 
     def set_active_model(self, model_name: str) -> None:
         self.active_model = model_name
@@ -334,7 +334,7 @@ class ConsultationWorkflowService:
             used_model = resolve_model_for_stage(
                 stage.name,
                 routing_key=self.routing_key,
-                fallback_model=self.active_model or self.settings.siliconflow_model,
+                fallback_model=self.active_model or self.settings.llm_model,
             )
         try:
             if stage.expects_json:
